@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#111318">
+  <title>SteadyRead — Teleprompter</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111318'/%3E%3Crect x='7' y='8' width='18' height='2.6' rx='1.3' fill='%23fff' opacity='.45'/%3E%3Crect x='5' y='14.7' width='22' height='2.6' rx='1.3' fill='%23ffb547'/%3E%3Crect x='7' y='21.4' width='14' height='2.6' rx='1.3' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#111318"/>
+          <rect x="7" y="8" width="18" height="2.6" rx="1.3" fill="#fff" opacity=".45"/>
+          <rect x="5" y="14.7" width="22" height="2.6" rx="1.3" fill="#ffb547"/>
+          <rect x="7" y="21.4" width="14" height="2.6" rx="1.3" fill="#fff"/>
+        </svg>
+        <span class="brand-name">SteadyRead</span>
+      </div>
+      <span class="tagline">Teleprompter · works offline · nothing leaves this device</span>
+    </header>
+
+    <p class="banner warn" id="storageWarning" hidden>
+      This browser is blocking local storage, so scripts won't be kept after you close the page.
+    </p>
+
+    <main class="library">
+      <aside class="sidebar" aria-label="Your scripts">
+        <button type="button" class="btn primary block" id="newScript">+ New script</button>
+        <ul class="script-list" id="scriptList"></ul>
+      </aside>
+
+      <section class="editor" id="editor" aria-label="Script editor">
+        <label class="sr-only" for="titleInput">Title</label>
+        <input id="titleInput" class="title-input" type="text" maxlength="120" placeholder="Untitled script" autocomplete="off">
+        <label class="sr-only" for="bodyInput">Script</label>
+        <textarea id="bodyInput" class="body-input" placeholder="Write or paste your script here. Leave a blank line between paragraphs." spellcheck="true"></textarea>
+        <div class="editor-meta">
+          <span id="wordCount">0 words</span>
+          <span aria-hidden="true">·</span>
+          <span>about <strong id="readTime">0:00</strong> at</span>
+          <label class="wpm-field">
+            <input id="editorWpm" type="number" min="40" max="400" step="5" inputmode="numeric" aria-label="Words per minute">
+            wpm
+          </label>
+          <span class="save-status" id="saveStatus" aria-live="polite"></span>
+        </div>
+        <div class="editor-actions">
+          <button type="button" class="btn danger" id="deleteScript">Delete</button>
+          <button type="button" class="btn primary big" id="openPrompter">▶ Open prompter</button>
+        </div>
+      </section>
+
+      <section class="empty" id="emptyState" hidden>
+        <p>No scripts yet.</p>
+        <button type="button" class="btn primary" id="emptyNew">+ New script</button>
+      </section>
+    </main>
+  </div>
+
+  <div id="prompter" class="prompter" hidden aria-label="Prompter">
+    <div class="stage" id="stage">
+      <div class="mirror-box" id="mirrorBox">
+        <div class="scroller" id="scroller">
+          <div class="script-text" id="scriptText"></div>
+          <div class="end-mark" aria-hidden="true">— end —</div>
+        </div>
+        <div class="countdown" id="countdown" hidden aria-live="assertive"></div>
+      </div>
+      <div class="fade-top" aria-hidden="true"></div>
+      <div class="reading-line" id="readingLine" aria-hidden="true"></div>
+    </div>
+
+    <video id="camPreview" class="cam-preview" muted playsinline autoplay hidden></video>
+
+    <div class="hud">
+      <span class="rec-badge" id="recBadge" hidden><span class="dot"></span> REC <span id="recTime">0:00</span></span>
+      <span class="time-left" id="timeLeft" title="Time left at this speed">0:00 left</span>
+    </div>
+
+    <div class="notice" id="notice" role="status" hidden>
+      <span id="noticeText"></span>
+      <a id="noticeLink" hidden></a>
+      <button type="button" class="notice-close" id="noticeClose" aria-label="Dismiss">✕</button>
+    </div>
+
+    <div class="settings" id="settingsPanel" hidden>
+      <div class="setting">
+        <label for="wpmRange">Speed <output id="wpmOut"></output> wpm</label>
+        <input type="range" id="wpmRange" min="40" max="400" step="5">
+      </div>
+      <div class="setting">
+        <label for="sizeRange">Text size <output id="sizeOut"></output> px</label>
+        <input type="range" id="sizeRange" min="20" max="160" step="2">
+      </div>
+      <div class="setting">
+        <label for="marginRange">Side margins <output id="marginOut"></output>%</label>
+        <input type="range" id="marginRange" min="0" max="35" step="1">
+      </div>
+      <div class="setting">
+        <label for="lineRange">Reading line position <output id="lineOut"></output>%</label>
+        <input type="range" id="lineRange" min="10" max="80" step="1">
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="mirrorToggle"> Mirror (flip left–right)</label>
+        <label><input type="checkbox" id="lineToggle"> Show reading line</label>
+        <label><input type="checkbox" id="countdownToggle"> 3-2-1 countdown</label>
+      </div>
+      <p class="keys">Keys: <kbd>Space</kbd> play/pause · <kbd>↑</kbd><kbd>↓</kbd> nudge · <kbd>←</kbd><kbd>→</kbd> speed · <kbd>+</kbd><kbd>−</kbd> size · <kbd>M</kbd> mirror · <kbd>Home</kbd> top · <kbd>Esc</kbd> exit</p>
+    </div>
+
+    <div class="controls" id="controls">
+      <button type="button" class="ctl" id="exitPrompter" aria-label="Back to scripts" title="Back (Esc)">←</button>
+      <button type="button" class="ctl" id="restartBtn" aria-label="Back to top" title="Back to top (Home)">⤒</button>
+      <button type="button" class="ctl" id="slowerBtn" aria-label="Slower" title="Slower (←)">−</button>
+      <button type="button" class="ctl play" id="playBtn" aria-label="Play" title="Play / pause (Space)">▶</button>
+      <button type="button" class="ctl" id="fasterBtn" aria-label="Faster" title="Faster (→)">+</button>
+      <span class="wpm-display" id="wpmDisplay">140 wpm</span>
+      <button type="button" class="ctl" id="settingsBtn" aria-label="Settings" aria-expanded="false" title="Settings">⚙</button>
+      <button type="button" class="ctl" id="fullscreenBtn" aria-label="Full screen" title="Full screen">⛶</button>
+      <button type="button" class="ctl rec" id="recordBtn" aria-label="Start recording" title="Record with camera">●</button>
+    </div>
+  </div>
+
+  <a id="downloadLink" hidden></a>
+
+  <script src="core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

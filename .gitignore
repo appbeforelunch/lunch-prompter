@@ -1,0 +1,8 @@
+# Build-session evidence: kept locally, never published (ops policy)
+session-*.jsonl
+session-*.start
+session-*.end
+session-*.err
+precheck.txt
+.DS_Store
+parity-runs/
